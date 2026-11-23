@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spell It!</title>
+<link href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F7F7F5; --ink:#1F2328; --muted:#6B7280; --line:#D1D5DB;
+    --accent:#2563EB; --accent-d:#1D4ED8; --ok:#15803D; --ok-bg:#F0FDF4; --bad:#C2410C;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:"Andika",system-ui,sans-serif; color:var(--ink); background:var(--bg);
+    min-height:100%; display:flex; flex-direction:column; align-items:center;
+    padding:20px; -webkit-tap-highlight-color:transparent;
+  }
+  header{width:100%;max-width:640px;display:flex;justify-content:flex-end;min-height:32px}
+  .count{font-size:18px;color:var(--muted)}
+
+  main{width:100%;max-width:640px;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:36px;padding-bottom:8vh}
+
+  .prompt{display:flex;align-items:center;justify-content:center;gap:40px;min-height:200px}
+  .picture{
+    width:200px;height:200px;border-radius:16px;background:#fff;border:2px solid #E5E7EB;
+    display:grid;place-items:center;font-size:130px;line-height:1;overflow:hidden;cursor:pointer;
+  }
+  .picture svg{width:80%;height:80%}
+  .picture img{width:100%;height:100%;object-fit:contain;padding:12px}
+
+  .speak{
+    --size:112px; width:var(--size);height:var(--size);border-radius:50%;border:none;cursor:pointer;
+    background:var(--accent);color:#fff;display:grid;place-items:center;
+  }
+  .speak:hover{background:var(--accent-d)}
+  .speak:focus-visible{outline:4px solid #93C5FD;outline-offset:4px}
+  .speak svg{width:46%;height:46%}
+  .speak.talking{background:var(--accent-d)}
+  .prompt.no-picture .speak{--size:160px}
+
+  .answer-row{width:100%;display:flex;flex-direction:column;align-items:center;gap:20px}
+  .field{position:relative;width:min(100%,480px)}
+  #answer{
+    width:100%; font-family:inherit; font-size:52px; font-weight:700; text-align:center;
+    text-transform:lowercase; color:var(--ink); padding:12px 64px; border-radius:14px;
+    border:3px solid var(--line); background:#fff; outline:none; caret-color:var(--accent);
+    letter-spacing:2px;
+  }
+  #answer:focus{border-color:var(--accent)}
+  #answer.right{border-color:var(--ok);background:var(--ok-bg);color:var(--ok)}
+  #answer.wrong{border-color:var(--bad)}
+  .mark{position:absolute;right:18px;top:50%;transform:translateY(-50%);width:36px;height:36px;display:none}
+  .mark.show{display:block}
+
+  .btn{
+    font-family:inherit;font-size:26px;font-weight:700;border:none;border-radius:14px;
+    padding:14px 44px;cursor:pointer;color:#fff;background:var(--accent);min-width:200px;
+  }
+  .btn:hover{background:var(--accent-d)}
+  .btn:focus-visible{outline:4px solid #93C5FD;outline-offset:3px}
+  .btn.next{background:var(--ok)}
+  .btn.next:hover{background:#166534}
+  .hidden{display:none !important}
+
+  .message{font-size:24px;min-height:34px;text-align:center;color:var(--muted)}
+  .message.good{color:var(--ok)} .message.try{color:var(--bad)}
+  .reveal{font-size:56px;font-weight:700;color:var(--accent);letter-spacing:6px;line-height:1;margin-top:-8px}
+  .credit{font-size:12px;color:#9CA3AF;text-align:center;margin-top:8px}
+  .credit a{color:inherit}
+
+
+  /* ---------- Teacher recording screen ---------- */
+  .teacher{width:100%;max-width:860px;font-size:18px}
+  .t-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:4px 0 8px}
+  .t-head h1{font-size:30px;margin:0}
+  .t-head a{color:var(--accent);font-size:17px}
+  .t-note{color:var(--muted);margin:0 0 16px;font-size:16px}
+  .t-alert{background:#FEF3C7;border:1px solid #FCD34D;color:#78350F;border-radius:10px;padding:10px 14px;margin:0 0 16px;font-size:16px}
+  .t-stage{background:#fff;border:2px solid #E5E7EB;border-radius:16px;padding:22px;display:grid;grid-template-columns:150px 1fr;gap:6px 24px;align-items:center}
+  .t-pic{grid-row:span 3;width:150px;height:150px;border-radius:12px;background:#F9FAFB;display:grid;place-items:center;overflow:hidden}
+  .t-pic img{width:100%;height:100%;object-fit:contain;padding:8px}
+  .t-pic.none::after{content:"no picture";color:#9CA3AF;font-size:14px}
+  .t-word{font-size:56px;font-weight:700;line-height:1.1}
+  .t-controls{display:flex;flex-wrap:wrap;gap:10px}
+  .t-btn{font-family:inherit;font-size:19px;font-weight:700;border:2px solid var(--line);background:#fff;color:var(--ink);border-radius:12px;padding:10px 18px;cursor:pointer}
+  .t-btn:hover{border-color:#9CA3AF}
+  .t-btn:disabled{opacity:.45;cursor:default}
+  .t-btn.rec{background:#DC2626;border-color:#DC2626;color:#fff;min-width:150px}
+  .t-btn.rec:hover{background:#B91C1C}
+  .t-btn.rec.on{background:#7F1D1D;border-color:#7F1D1D;animation:recpulse 1s ease-in-out infinite}
+  @keyframes recpulse{50%{box-shadow:0 0 0 8px rgba(220,38,38,.25)}}
+  .t-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .t-status{min-height:26px;color:var(--muted);font-size:16px}
+  .t-status.ok{color:var(--ok)} .t-status.bad{color:var(--bad)}
+  .t-keys{grid-column:1 / -1;color:#9CA3AF;font-size:14px;margin-top:8px}
+  .t-bar{display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px;margin:20px 0 10px}
+  .t-bar #tProgress{font-weight:700}
+  .t-bar input[type=search]{font-family:inherit;font-size:16px;padding:8px 12px;border:2px solid var(--line);border-radius:10px;width:180px}
+  .t-bar .spacer{flex:1}
+  .t-list{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+  .t-item{display:flex;align-items:center;justify-content:space-between;gap:6px;background:#fff;border:2px solid #E5E7EB;border-radius:10px;padding:6px 6px 6px 12px;cursor:pointer;font-size:19px}
+  .t-item:hover{border-color:#9CA3AF}
+  .t-item.current{border-color:var(--accent);box-shadow:0 0 0 3px #BFDBFE}
+  .t-tag{font-size:12px;font-weight:700;border-radius:6px;padding:2px 6px;white-space:nowrap}
+  .t-tag.local{background:#DCFCE7;color:#166534}
+  .t-tag.site{background:#DBEAFE;color:#1E40AF}
+  .t-tag.none{background:#F3F4F6;color:#9CA3AF}
+  .t-group{grid-column:1 / -1;font-size:14px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 0}
+  .t-help{margin:24px 0 40px;background:#fff;border:2px solid #E5E7EB;border-radius:12px;padding:12px 18px}
+  .t-help summary{font-weight:700;cursor:pointer}
+  .t-help li{margin:6px 0}
+  @media (max-width:640px){.t-stage{grid-template-columns:1fr}.t-pic{grid-row:auto;margin:0 auto}.t-word{text-align:center}.t-controls{justify-content:center}}
+
+  @media (max-width:560px){
+    .prompt{flex-direction:column;gap:20px}
+    .picture{width:170px;height:170px;font-size:110px}
+    .speak{--size:96px}
+    .prompt.no-picture .speak{--size:140px}
+    #answer{font-size:42px}
+  }
+</style>
+</head>
+<body>
+  <header><div class="count" id="count"></div></header>
+
+  <main>
+    <div class="prompt" id="prompt">
+      <div class="picture" id="picture" role="img"></div>
+      <button class="speak" id="speak" aria-label="Hear the word">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M11 5 6 9H3v6h3l5 4V5z" fill="currentColor"/>
+            <path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/>
+          </svg>
+        </button>
+    </div>
+
+    <form class="answer-row" id="form" autocomplete="off">
+      <div class="field">
+        <input id="answer" type="text" autocomplete="off" autocorrect="off" autocapitalize="off"
+               spellcheck="false" aria-label="Type the word" autofocus>
+        <svg class="mark" id="mark" viewBox="0 0 24 24" fill="none" stroke="#15803D" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+      </div>
+      <div class="message" id="message" aria-live="polite"></div>
+      <div class="reveal hidden" id="reveal"><span id="revealWord"></span></div>
+      <button type="submit" class="btn check" id="check">Check</button>
+      <button type="button" class="btn next hidden" id="next">Next</button>
+    </form>
+  </main>
+
+  <section class="teacher hidden" id="teacher">
+    <div class="t-head"><h1>Record words</h1><a href="#">Back to practice</a></div>
+    <p class="t-note">Recordings are saved in this browser as you go, so you can stop and come back later on this same device. When you're done, download them and upload the folder to your website.</p>
+    <div class="t-alert hidden" id="tAlert"></div>
+    <div class="t-stage">
+      <div class="t-pic" id="tPic"></div>
+      <div class="t-word" id="tWord"></div>
+      <div class="t-controls">
+        <button class="t-btn rec" id="tRec">● Record</button>
+        <button class="t-btn" id="tPlay" disabled>▶ Play</button>
+        <button class="t-btn" id="tDel" disabled>Delete</button>
+        <button class="t-btn" id="tPrev">← Back</button>
+        <button class="t-btn primary" id="tNext">Next →</button>
+      </div>
+      <div class="t-status" id="tStatus"></div>
+      <div class="t-keys">Keyboard: Space starts and stops recording · P plays · ← and → change words. Recording stops on its own after 4 seconds.</div>
+    </div>
+    <div class="t-bar">
+      <span id="tProgress"></span>
+      <label><input type="checkbox" id="tMissing"> Only show words with no recording</label>
+      <input type="search" id="tSearch" placeholder="Find a word">
+      <span class="spacer"></span>
+      <button class="t-btn primary" id="tDownload">Download recordings (.zip)</button>
+    </div>
+    <ol class="t-list" id="tList"></ol>
+    <details class="t-help">
+      <summary>How to put the recordings on your website</summary>
+      <ol>
+        <li>Click <b>Download recordings (.zip)</b> and unzip the file. Inside is a folder named <b>audio</b>. With more than 90 recordings you'll instead see folders named <b>upload 1 of 4</b>, <b>upload 2 of 4</b> and so on, each holding an <b>audio</b> folder, because GitHub's website accepts at most 100 files per upload.</li>
+        <li>Open your repository on GitHub and click <b>Add file → Upload files</b>.</li>
+        <li>Drag the <b>audio</b> folder in and click <b>Commit changes</b>. If you have several upload folders, repeat this for the <b>audio</b> folder inside each one; they all merge into the same folder on your site.</li>
+        <li>After a minute or two, every device uses your recordings. Words marked <span class="t-tag site">website</span> are already live.</li>
+      </ol>
+      <p>Re-recorded a few words? Download again and upload; files with the same name are replaced.</p>
+    </details>
+  </section>
+  <div class="credit">Pictures: <a href="https://mulberrysymbols.org" target="_blank" rel="noopener">Mulberry Symbols</a> by Steve Lee, CC BY-SA</div>
+
+<script src="pictures.js"></script>
+<script>
+/* =========================================================
+   WORD LIST: shown in a new random order each time.
+   word:    the word to spell (required)
+   type:    pattern tag (cvc, ccvc-blend, ccvc-digraph,
+            cvcc-blend, cvcc-digraph, cvcc-floss)
+   picture: optional. the name of a picture in pictures.js (usually the word itself). Leave out for none.
+   ========================================================= */
+const WORDS = [
+  /* cvc */
+  {word:"cat", type:"cvc", picture:"cat"},
+  {word:"bat", type:"cvc", picture:"bat"},
+  {word:"hat", type:"cvc", picture:"hat"},
+  {word:"mat", type:"cvc", picture:"mat"},
+  {word:"rat", type:"cvc", picture:"rat"},
+  {word:"sat", type:"cvc", picture:"sat"},
+  {word:"map", type:"cvc"},
+  {word:"cap", type:"cvc", picture:"cap"},
+  {word:"nap", type:"cvc", picture:"nap"},
+  {word:"lap", type:"cvc"},
+  {word:"tap", type:"cvc", picture:"tap"},
+  {word:"can", type:"cvc", picture:"can"},
+  {word:"fan", type:"cvc"},
+  {word:"pan", type:"cvc", picture:"pan"},
+  {word:"van", type:"cvc", picture:"van"},
+  {word:"man", type:"cvc", picture:"man"},
+  {word:"ran", type:"cvc", picture:"ran"},
+  {word:"jam", type:"cvc", picture:"jam"},
+  {word:"ham", type:"cvc"},
+  {word:"ram", type:"cvc", picture:"ram"},
+  {word:"yam", type:"cvc"},
+  {word:"bag", type:"cvc", picture:"bag"},
+  {word:"tag", type:"cvc"},
+  {word:"rag", type:"cvc"},
+  {word:"wag", type:"cvc", picture:"wag"},
+  {word:"cab", type:"cvc", picture:"cab"},
+  {word:"lab", type:"cvc"},
+  {word:"dad", type:"cvc"},
+  {word:"pad", type:"cvc"},
+  {word:"sad", type:"cvc"},
+  {word:"gas", type:"cvc"},
+  {word:"wax", type:"cvc"},
+  {word:"bed", type:"cvc", picture:"bed"},
+  {word:"red", type:"cvc", picture:"red"},
+  {word:"fed", type:"cvc"},
+  {word:"led", type:"cvc"},
+  {word:"pen", type:"cvc", picture:"pen"},
+  {word:"hen", type:"cvc", picture:"hen"},
+  {word:"ten", type:"cvc", picture:"ten"},
+  {word:"men", type:"cvc"},
+  {word:"den", type:"cvc"},
+  {word:"net", type:"cvc"},
+  {word:"wet", type:"cvc", picture:"wet"},
+  {word:"jet", type:"cvc", picture:"jet"},
+  {word:"pet", type:"cvc"},
+  {word:"vet", type:"cvc"},
+  {word:"get", type:"cvc"},
+  {word:"set", type:"cvc"},
+  {word:"let", type:"cvc"},
+  {word:"leg", type:"cvc", picture:"leg"},
+  {word:"peg", type:"cvc", picture:"peg"},
+  {word:"beg", type:"cvc"},
+  {word:"web", type:"cvc", picture:"web"},
+  {word:"yes", type:"cvc"},
+  {word:"pig", type:"cvc", picture:"pig"},
+  {word:"wig", type:"cvc", picture:"wig"},
+  {word:"dig", type:"cvc", picture:"dig"},
+  {word:"big", type:"cvc"},
+  {word:"fig", type:"cvc", picture:"fig"},
+  {word:"jig", type:"cvc"},
+  {word:"pin", type:"cvc", picture:"pin"},
+  {word:"bin", type:"cvc", picture:"bin"},
+  {word:"tin", type:"cvc"},
+  {word:"win", type:"cvc"},
+  {word:"fin", type:"cvc", picture:"fin"},
+  {word:"six", type:"cvc", picture:"six"},
+  {word:"mix", type:"cvc", picture:"mix"},
+  {word:"fix", type:"cvc"},
+  {word:"kit", type:"cvc"},
+  {word:"sit", type:"cvc", picture:"sit"},
+  {word:"hit", type:"cvc"},
+  {word:"fit", type:"cvc"},
+  {word:"lit", type:"cvc"},
+  {word:"bit", type:"cvc"},
+  {word:"lid", type:"cvc", picture:"lid"},
+  {word:"kid", type:"cvc"},
+  {word:"hid", type:"cvc"},
+  {word:"rip", type:"cvc"},
+  {word:"lip", type:"cvc", picture:"lip"},
+  {word:"zip", type:"cvc", picture:"zip"},
+  {word:"hip", type:"cvc"},
+  {word:"dip", type:"cvc", picture:"dip"},
+  {word:"sip", type:"cvc", picture:"sip"},
+  {word:"tip", type:"cvc"},
+  {word:"dog", type:"cvc", picture:"dog"},
+  {word:"log", type:"cvc", picture:"log"},
+  {word:"hog", type:"cvc"},
+  {word:"fog", type:"cvc"},
+  {word:"jog", type:"cvc", picture:"jog"},
+  {word:"pot", type:"cvc", picture:"pot"},
+  {word:"hot", type:"cvc", picture:"hot"},
+  {word:"dot", type:"cvc", picture:"dot"},
+  {word:"cot", type:"cvc", picture:"cot"},
+  {word:"not", type:"cvc"},
+  {word:"rod", type:"cvc"},
+  {word:"nod", type:"cvc", picture:"nod"},
+  {word:"mop", type:"cvc", picture:"mop"},
+  {word:"top", type:"cvc"},
+  {word:"hop", type:"cvc", picture:"hop"},
+  {word:"pop", type:"cvc"},
+  {word:"cop", type:"cvc"},
+  {word:"box", type:"cvc"},
+  {word:"fox", type:"cvc", picture:"fox"},
+  {word:"job", type:"cvc"},
+  {word:"sob", type:"cvc"},
+  {word:"bus", type:"cvc", picture:"bus"},
+  {word:"bug", type:"cvc", picture:"bug"},
+  {word:"rug", type:"cvc", picture:"rug"},
+  {word:"mug", type:"cvc", picture:"mug"},
+  {word:"hug", type:"cvc", picture:"hug"},
+  {word:"jug", type:"cvc", picture:"jug"},
+  {word:"dug", type:"cvc", picture:"dug"},
+  {word:"tub", type:"cvc", picture:"tub"},
+  {word:"cub", type:"cvc"},
+  {word:"rub", type:"cvc"},
+  {word:"sub", type:"cvc"},
+  {word:"sun", type:"cvc", picture:"sun"},
+  {word:"run", type:"cvc", picture:"run"},
+  {word:"bun", type:"cvc", picture:"bun"},
+  {word:"fun", type:"cvc"},
+  {word:"cup", type:"cvc", picture:"cup"},
+  {word:"pup", type:"cvc"},
+  {word:"nut", type:"cvc", picture:"nut"},
+  {word:"hut", type:"cvc"},
+  {word:"cut", type:"cvc", picture:"cut"},
+  {word:"but", type:"cvc"},
+  {word:"mud", type:"cvc"},
+  {word:"bud", type:"cvc", picture:"bud"},
+  {word:"hum", type:"cvc"},
+  {word:"gum", type:"cvc"},
+  {word:"yum", type:"cvc"},
+  /* ccvc-blend */
+  {word:"frog", type:"ccvc-blend", picture:"frog"},
+  {word:"flag", type:"ccvc-blend"},
+  {word:"crab", type:"ccvc-blend", picture:"crab"},
+  {word:"drum", type:"ccvc-blend", picture:"drum"},
+  {word:"plum", type:"ccvc-blend", picture:"plum"},
+  {word:"sled", type:"ccvc-blend", picture:"sled"},
+  {word:"slug", type:"ccvc-blend", picture:"slug"},
+  {word:"snap", type:"ccvc-blend"},
+  {word:"step", type:"ccvc-blend", picture:"step"},
+  {word:"stop", type:"ccvc-blend"},
+  {word:"spot", type:"ccvc-blend"},
+  {word:"trip", type:"ccvc-blend"},
+  {word:"trap", type:"ccvc-blend", picture:"trap"},
+  {word:"grin", type:"ccvc-blend", picture:"grin"},
+  {word:"swim", type:"ccvc-blend", picture:"swim"},
+  {word:"clap", type:"ccvc-blend", picture:"clap"},
+  {word:"clip", type:"ccvc-blend"},
+  {word:"plan", type:"ccvc-blend"},
+  {word:"glad", type:"ccvc-blend"},
+  {word:"drip", type:"ccvc-blend", picture:"drip"},
+  {word:"drop", type:"ccvc-blend"},
+  {word:"grab", type:"ccvc-blend", picture:"grab"},
+  {word:"flip", type:"ccvc-blend", picture:"flip"},
+  {word:"slip", type:"ccvc-blend"},
+  {word:"spin", type:"ccvc-blend", picture:"spin"},
+  {word:"skip", type:"ccvc-blend", picture:"skip"},
+  {word:"skin", type:"ccvc-blend"},
+  {word:"slam", type:"ccvc-blend"},
+  {word:"snug", type:"ccvc-blend"},
+  {word:"swam", type:"ccvc-blend", picture:"swam"},
+  {word:"twig", type:"ccvc-blend", picture:"twig"},
+  {word:"trot", type:"ccvc-blend"},
+  {word:"plug", type:"ccvc-blend", picture:"plug"},
+  {word:"brag", type:"ccvc-blend"},
+  {word:"crib", type:"ccvc-blend", picture:"crib"},
+  {word:"crop", type:"ccvc-blend"},
+  {word:"prop", type:"ccvc-blend"},
+  {word:"snip", type:"ccvc-blend"},
+  {word:"spit", type:"ccvc-blend"},
+  {word:"stem", type:"ccvc-blend"},
+  {word:"flat", type:"ccvc-blend"},
+  {word:"flop", type:"ccvc-blend"},
+  {word:"scab", type:"ccvc-blend"},
+  {word:"spun", type:"ccvc-blend", picture:"spun"},
+  /* ccvc-digraph */
+  {word:"ship", type:"ccvc-digraph", picture:"ship"},
+  {word:"shop", type:"ccvc-digraph", picture:"shop"},
+  {word:"shed", type:"ccvc-digraph"},
+  {word:"shut", type:"ccvc-digraph", picture:"shut"},
+  {word:"chip", type:"ccvc-digraph"},
+  {word:"chop", type:"ccvc-digraph", picture:"chop"},
+  {word:"chin", type:"ccvc-digraph", picture:"chin"},
+  {word:"chat", type:"ccvc-digraph"},
+  {word:"chug", type:"ccvc-digraph"},
+  {word:"thin", type:"ccvc-digraph"},
+  {word:"that", type:"ccvc-digraph"},
+  {word:"them", type:"ccvc-digraph"},
+  {word:"then", type:"ccvc-digraph"},
+  {word:"this", type:"ccvc-digraph"},
+  {word:"whip", type:"ccvc-digraph"},
+  {word:"when", type:"ccvc-digraph"},
+  {word:"whiz", type:"ccvc-digraph"},
+  /* cvcc-blend */
+  {word:"hand", type:"cvcc-blend", picture:"hand"},
+  {word:"band", type:"cvcc-blend"},
+  {word:"sand", type:"cvcc-blend", picture:"sand"},
+  {word:"land", type:"cvcc-blend"},
+  {word:"lamp", type:"cvcc-blend", picture:"lamp"},
+  {word:"camp", type:"cvcc-blend", picture:"camp"},
+  {word:"damp", type:"cvcc-blend"},
+  {word:"ramp", type:"cvcc-blend", picture:"ramp"},
+  {word:"jump", type:"cvcc-blend", picture:"jump"},
+  {word:"bump", type:"cvcc-blend"},
+  {word:"pump", type:"cvcc-blend"},
+  {word:"dump", type:"cvcc-blend"},
+  {word:"lump", type:"cvcc-blend"},
+  {word:"mask", type:"cvcc-blend"},
+  {word:"desk", type:"cvcc-blend", picture:"desk"},
+  {word:"tent", type:"cvcc-blend"},
+  {word:"bent", type:"cvcc-blend"},
+  {word:"went", type:"cvcc-blend"},
+  {word:"nest", type:"cvcc-blend", picture:"nest"},
+  {word:"best", type:"cvcc-blend"},
+  {word:"rest", type:"cvcc-blend"},
+  {word:"vest", type:"cvcc-blend", picture:"vest"},
+  {word:"test", type:"cvcc-blend"},
+  {word:"west", type:"cvcc-blend"},
+  {word:"gift", type:"cvcc-blend", picture:"gift"},
+  {word:"lift", type:"cvcc-blend"},
+  {word:"raft", type:"cvcc-blend"},
+  {word:"soft", type:"cvcc-blend"},
+  {word:"milk", type:"cvcc-blend", picture:"milk"},
+  {word:"silk", type:"cvcc-blend"},
+  {word:"belt", type:"cvcc-blend", picture:"belt"},
+  {word:"melt", type:"cvcc-blend", picture:"melt"},
+  {word:"help", type:"cvcc-blend", picture:"help"},
+  {word:"gulp", type:"cvcc-blend"},
+  {word:"mint", type:"cvcc-blend"},
+  {word:"hint", type:"cvcc-blend"},
+  {word:"pond", type:"cvcc-blend", picture:"pond"},
+  {word:"bend", type:"cvcc-blend", picture:"bend"},
+  {word:"mend", type:"cvcc-blend"},
+  {word:"send", type:"cvcc-blend"},
+  {word:"list", type:"cvcc-blend"},
+  {word:"fist", type:"cvcc-blend", picture:"fist"},
+  {word:"mist", type:"cvcc-blend"},
+  {word:"dust", type:"cvcc-blend", picture:"dust"},
+  {word:"must", type:"cvcc-blend"},
+  {word:"rust", type:"cvcc-blend"},
+  {word:"just", type:"cvcc-blend"},
+  {word:"hunt", type:"cvcc-blend"},
+  /* cvcc-digraph */
+  {word:"fish", type:"cvcc-digraph", picture:"fish"},
+  {word:"dish", type:"cvcc-digraph", picture:"dish"},
+  {word:"wish", type:"cvcc-digraph"},
+  {word:"cash", type:"cvcc-digraph", picture:"cash"},
+  {word:"rash", type:"cvcc-digraph"},
+  {word:"mash", type:"cvcc-digraph", picture:"mash"},
+  {word:"rush", type:"cvcc-digraph"},
+  {word:"gush", type:"cvcc-digraph"},
+  {word:"much", type:"cvcc-digraph"},
+  {word:"such", type:"cvcc-digraph"},
+  {word:"rich", type:"cvcc-digraph"},
+  {word:"path", type:"cvcc-digraph"},
+  {word:"math", type:"cvcc-digraph", picture:"math"},
+  {word:"bath", type:"cvcc-digraph", picture:"bath"},
+  {word:"moth", type:"cvcc-digraph", picture:"moth"},
+  {word:"with", type:"cvcc-digraph"},
+  {word:"back", type:"cvcc-digraph"},
+  {word:"sack", type:"cvcc-digraph", picture:"sack"},
+  {word:"pack", type:"cvcc-digraph"},
+  {word:"rack", type:"cvcc-digraph"},
+  {word:"neck", type:"cvcc-digraph"},
+  {word:"deck", type:"cvcc-digraph"},
+  {word:"peck", type:"cvcc-digraph"},
+  {word:"kick", type:"cvcc-digraph", picture:"kick"},
+  {word:"sick", type:"cvcc-digraph"},
+  {word:"lick", type:"cvcc-digraph"},
+  {word:"pick", type:"cvcc-digraph"},
+  {word:"rock", type:"cvcc-digraph", picture:"rock"},
+  {word:"sock", type:"cvcc-digraph", picture:"sock"},
+  {word:"lock", type:"cvcc-digraph"},
+  {word:"duck", type:"cvcc-digraph", picture:"duck"},
+  {word:"luck", type:"cvcc-digraph"},
+  {word:"tuck", type:"cvcc-digraph"},
+  {word:"ring", type:"cvcc-digraph", picture:"ring"},
+  {word:"sing", type:"cvcc-digraph", picture:"sing"},
+  {word:"king", type:"cvcc-digraph", picture:"king"},
+  {word:"wing", type:"cvcc-digraph", picture:"wing"},
+  {word:"long", type:"cvcc-digraph"},
+  {word:"song", type:"cvcc-digraph", picture:"song"},
+  {word:"sang", type:"cvcc-digraph", picture:"sang"},
+  {word:"bang", type:"cvcc-digraph"},
+  {word:"hung", type:"cvcc-digraph"},
+  /* cvcc-floss */
+  {word:"bell", type:"cvcc-floss", picture:"bell"},
+  {word:"tell", type:"cvcc-floss"},
+  {word:"well", type:"cvcc-floss"},
+  {word:"sell", type:"cvcc-floss"},
+  {word:"fell", type:"cvcc-floss"},
+  {word:"hill", type:"cvcc-floss"},
+  {word:"fill", type:"cvcc-floss", picture:"fill"},
+  {word:"will", type:"cvcc-floss"},
+  {word:"pill", type:"cvcc-floss"},
+  {word:"doll", type:"cvcc-floss", picture:"doll"},
+  {word:"dull", type:"cvcc-floss"},
+  {word:"gull", type:"cvcc-floss", picture:"gull"},
+  {word:"puff", type:"cvcc-floss"},
+  {word:"cuff", type:"cvcc-floss"},
+  {word:"huff", type:"cvcc-floss"},
+  {word:"mess", type:"cvcc-floss"},
+  {word:"less", type:"cvcc-floss"},
+  {word:"kiss", type:"cvcc-floss", picture:"kiss"},
+  {word:"miss", type:"cvcc-floss"},
+  {word:"boss", type:"cvcc-floss"},
+  {word:"moss", type:"cvcc-floss"},
+  {word:"fuzz", type:"cvcc-floss"},
+  {word:"buzz", type:"cvcc-floss", picture:"buzz"},
+  {word:"jazz", type:"cvcc-floss"},
+  {word:"fizz", type:"cvcc-floss"},
+];
+
+
+
+
+const $ = id => document.getElementById(id);
+const input=$("answer"), msg=$("message"), speakBtn=$("speak"), pic=$("picture"), prompt=$("prompt");
+let order=[], idx=0, word="", solved=false, misses=0, voice=null;
+const MAX_TRIES=3;
+
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+/* ---- Speech ---- */
+function pickVoice(){
+  const vs=(window.speechSynthesis && speechSynthesis.getVoices())||[];
+  const en=vs.filter(v=>/^en/i.test(v.lang));
+  voice=en.find(v=>/samantha|google us english|aria|jenny|zira/i.test(v.name))||en.find(v=>/en-US/i.test(v.lang))||en[0]||null;
+}
+if(window.speechSynthesis){pickVoice();speechSynthesis.onvoiceschanged=pickVoice;}
+function say(text,rate=0.7){
+  if(!window.speechSynthesis) return;
+  try{
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text);
+    if(voice) u.voice=voice;
+    u.rate=rate;
+    u.onstart=()=>speakBtn.classList.add("talking");
+    u.onend=u.onerror=()=>speakBtn.classList.remove("talking");
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+
+/* ---- Recordings ----
+   A word uses, in order: a recording made on this device (teacher screen),
+   then audio/<word>.wav on the website, then the computer voice. */
+const AUDIO_DIR="audio/";
+const player=new Audio(); player.preload="auto";
+const siteHas={};           // word -> true/false once known
+let localUrl=null;
+const DB={
+  db:null,
+  open(){ if(this.db) return Promise.resolve(this.db);
+    return new Promise((res,rej)=>{ try{
+      const r=indexedDB.open("spelling-recordings",1);
+      r.onupgradeneeded=()=>r.result.createObjectStore("audio");
+      r.onsuccess=()=>{this.db=r.result;res(this.db);}; r.onerror=()=>rej(r.error);
+    }catch(e){rej(e);} }); },
+  async op(mode,fn){ const db=await this.open(); return new Promise((res,rej)=>{
+      const tx=db.transaction("audio",mode), st=tx.objectStore("audio"), r=fn(st);
+      tx.oncomplete=()=>res(r&&r.result); tx.onerror=()=>rej(tx.error); }); },
+  get(k){ return this.op("readonly",s=>s.get(k)).catch(()=>null); },
+  put(k,v){ return this.op("readwrite",s=>s.put(v,k)); },
+  del(k){ return this.op("readwrite",s=>s.delete(k)); },
+  keys(){ return this.op("readonly",s=>s.getAllKeys()).catch(()=>[]); }
+};
+
+function playSrc(src){
+  return new Promise((res,rej)=>{
+    player.onended=()=>{speakBtn.classList.remove("talking");res();};
+    player.onerror=()=>{speakBtn.classList.remove("talking");rej(new Error("no audio"));};
+    player.src=src;
+    const pr=player.play();
+    speakBtn.classList.add("talking");
+    if(pr) pr.catch(err=>{speakBtn.classList.remove("talking");rej(err);});
+  });
+}
+
+// spell=true: after three misses, also spell it out (computer voice only)
+async function playWord(w,spell=false){
+  try{ if(window.speechSynthesis) speechSynthesis.cancel(); }catch(e){}
+  player.pause();
+  const blob=await DB.get(w);
+  if(blob){
+    if(localUrl) URL.revokeObjectURL(localUrl);
+    localUrl=URL.createObjectURL(blob);
+    try{ await playSrc(localUrl); return; }catch(e){}
+  }
+  if(siteHas[w]!==false){
+    try{ await playSrc(AUDIO_DIR+w+".wav"); siteHas[w]=true; return; }
+    catch(e){ if(e && e.name==="NotAllowedError") return; siteHas[w]=false; }
+  }
+  say(spell ? w+". "+[...w].join(", ")+". "+w : w);
+}
+
+/* ---- Rounds ---- */
+// A picture is a name from pictures.js ("cat") or an image file path ("photos/cat.jpg").
+function pictureSrc(p){
+  if(!p) return null;
+  if(window.PICTURES && PICTURES[p]) return PICTURES[p];
+  if(/\.(png|jpe?g|gif|webp|svg)$/i.test(p)) return p;
+  return null;
+}
+function showPicture(p){
+  pic.innerHTML="";
+  if(!p){ prompt.classList.add("no-picture"); pic.classList.add("hidden"); return; }
+  prompt.classList.remove("no-picture"); pic.classList.remove("hidden");
+  const src=pictureSrc(p);
+  if(src){
+    const img=new Image(); img.src=src; img.alt="";
+    img.onerror=()=>showPicture(null);
+    pic.appendChild(img);
+  } else { showPicture(null); return; }
+  pic.setAttribute("aria-label","picture");
+}
+
+function load(){
+  const item=order[idx];
+  word=String(item.word).trim().toLowerCase(); solved=false; misses=0;
+  $("reveal").classList.add("hidden");
+  showPicture(item.picture);
+  input.value=""; input.readOnly=false; input.className=""; $("mark").classList.remove("show");
+  msg.textContent=""; msg.className="message";
+  $("check").classList.remove("hidden"); $("next").classList.add("hidden");
+  $("count").textContent=`${idx+1} / ${order.length}`;
+  focusInput();
+}
+
+function focusInput(){ if(!solved && !TEACHER) input.focus({preventScroll:true}); }
+
+function check(){
+  if(solved) return;
+  const v=input.value.trim().toLowerCase();
+  if(!v){ playWord(word); focusInput(); return; }
+  if(v===word){
+    solved=true; input.readOnly=true; input.className="right";
+    $("mark").classList.add("show"); $("reveal").classList.add("hidden");
+    msg.textContent="Correct"; msg.className="message good";
+    $("check").classList.add("hidden"); $("next").classList.remove("hidden"); $("next").focus();
+  } else {
+    // Leave their letters alone; they fix it with the keyboard.
+    misses++;
+    input.className="wrong";
+    if(misses>=MAX_TRIES){
+      msg.textContent="The word is"; msg.className="message";
+      $("revealWord").textContent=word; $("reveal").classList.remove("hidden");
+      $("next").classList.remove("hidden");
+      setTimeout(()=>playWord(word,true),500);
+    } else {
+      msg.textContent="Try again"; msg.className="message try";
+      setTimeout(()=>playWord(word),500);
+    }
+    focusInput();
+  }
+}
+
+function next(){
+  idx++;
+  if(idx>=order.length){ order=shuffle([...WORDS]); idx=0; }
+  load();
+  setTimeout(()=>playWord(word),300);
+}
+
+/* ---- Events ---- */
+input.addEventListener("input",()=>{
+  if(input.classList.contains("wrong")){ input.className=""; if(misses<MAX_TRIES){ msg.textContent=""; msg.className="message"; } }
+});
+$("form").addEventListener("submit",e=>{ e.preventDefault(); check(); });
+$("next").addEventListener("click",next);
+speakBtn.addEventListener("click",()=>{ playWord(word); focusInput(); });
+pic.addEventListener("click",()=>{ playWord(word); focusInput(); });
+// Keep the cursor in the box: tapping anywhere on the page puts focus back.
+document.addEventListener("click",e=>{ if(TEACHER) return; if(!e.target.closest("button")) focusInput(); });
+document.addEventListener("keydown",e=>{
+  if(TEACHER) return;
+  if(solved && e.key==="Enter" && !(document.activeElement && document.activeElement.tagName==="BUTTON")){ e.preventDefault(); next(); }
+  else if(!solved && document.activeElement!==input && e.key.length===1) focusInput();
+});
+
+
+/* =========================================================
+   TEACHER RECORDING SCREEN  (open the page with #teacher)
+   ========================================================= */
+function startTeacher(){
+  document.querySelector("header").classList.add("hidden");
+  document.querySelector("main").classList.add("hidden");
+  $("teacher").classList.remove("hidden");
+  document.title="Record words";
+
+  const T={i:0, have:new Set(), stream:null, rec:null, chunks:[], timer:null, busy:false};
+  const GROUPS={"cvc":"CVC","ccvc-blend":"CCVC · blends","ccvc-digraph":"CCVC · digraphs",
+    "cvcc-blend":"CVCC · blends","cvcc-digraph":"CVCC · digraphs","cvcc-floss":"CVCC · floss rule"};
+  const list=WORDS.map(w=>({...w, word:String(w.word).trim().toLowerCase()}));
+  const status=(text,cls="")=>{ $("tStatus").textContent=text; $("tStatus").className="t-status "+cls; };
+  const alertBox=t=>{ $("tAlert").textContent=t; $("tAlert").classList.toggle("hidden",!t); };
+
+  function tagFor(w){
+    if(T.have.has(w)) return ["local","recorded"];
+    if(siteHas[w]) return ["site","website"];
+    return ["none","—"];
+  }
+  function renderList(){
+    const q=$("tSearch").value.trim().toLowerCase(), onlyMissing=$("tMissing").checked;
+    const ol=$("tList"); ol.innerHTML=""; let lastType="";
+    list.forEach((w,i)=>{
+      if(q && !w.word.includes(q)) return;
+      if(onlyMissing && (T.have.has(w.word)||siteHas[w.word])) return;
+      if(w.type!==lastType){ lastType=w.type; const g=document.createElement("li"); g.className="t-group"; g.textContent=GROUPS[w.type]||w.type; ol.appendChild(g); }
+      const li=document.createElement("li"); li.className="t-item"+(i===T.i?" current":""); li.dataset.i=i;
+      const [cls,label]=tagFor(w.word);
+      li.innerHTML=`<span>${w.word}</span><span class="t-tag ${cls}">${label}</span>`;
+      li.onclick=()=>select(i);
+      ol.appendChild(li);
+    });
+    const n=list.filter(w=>T.have.has(w.word)||siteHas[w.word]).length;
+    $("tProgress").textContent=`${n} of ${list.length} words have a recording (${T.have.size} new on this device)`;
+    $("tDownload").disabled=T.have.size===0;
+  }
+  function select(i,scroll=true){
+    if(T.rec) return;
+    T.i=(i+list.length)%list.length;
+    const w=list[T.i];
+    $("tWord").textContent=w.word;
+    const box=$("tPic"); box.innerHTML=""; box.classList.toggle("none",!w.picture);
+    const src=pictureSrc(w.picture); box.classList.toggle("none",!src);
+    if(src){ const img=new Image(); img.src=src; img.alt=""; box.appendChild(img); }
+    const has=T.have.has(w.word);
+    $("tPlay").disabled=!(has||siteHas[w.word]); $("tDel").disabled=!has;
+    status(has?"Recorded on this device.":siteHas[w.word]?"Already on your website. Record again to replace it.":"Not recorded yet.", has?"ok":"");
+    renderList();
+    if(scroll){ const el=document.querySelector(`.t-item[data-i="${T.i}"]`); if(el) el.scrollIntoView({block:"nearest"}); }
+  }
+
+  /* ---- recording ---- */
+  async function getMic(){
+    if(T.stream) return T.stream;
+    if(!navigator.mediaDevices || !window.MediaRecorder) throw new Error("unsupported");
+    T.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+    return T.stream;
+  }
+  async function toggleRec(){
+    if(T.busy) return;
+    if(T.rec){ T.rec.stop(); return; }
+    let stream;
+    try{ stream=await getMic(); alertBox(""); }
+    catch(e){
+      alertBox(e.message==="unsupported"
+        ? "This browser can't record audio. Try Chrome, Edge, or Safari."
+        : "The microphone isn't available. Allow microphone access for this site in your browser's address bar, then try again. (Recording doesn't work in Claude's preview; use your GitHub Pages address.)");
+      return;
+    }
+    T.chunks=[];
+    const rec=new MediaRecorder(stream); T.rec=rec;
+    rec.ondataavailable=e=>{ if(e.data && e.data.size) T.chunks.push(e.data); };
+    rec.onstop=()=>finishRec(rec.mimeType);
+    rec.start();
+    $("tRec").textContent="■ Stop"; $("tRec").classList.add("on");
+    status("Recording… say the word.");
+    T.timer=setTimeout(()=>{ if(T.rec) T.rec.stop(); },4000);
+  }
+  async function finishRec(type){
+    clearTimeout(T.timer); T.rec=null; T.busy=true;
+    $("tRec").textContent="● Record"; $("tRec").classList.remove("on");
+    status("Saving…");
+    const w=list[T.i].word;
+    try{
+      const raw=new Blob(T.chunks,{type:type||"audio/webm"});
+      const wav=await cleanUp(raw);
+      if(!wav){ status("I didn't hear anything. Try again a little closer to the mic.","bad"); T.busy=false; return; }
+      await DB.put(w,wav); T.have.add(w);
+      T.busy=false; select(T.i,false);
+      status("Saved. Listening back…","ok");
+      await playWord(w).catch(()=>{});
+      status("Saved. Press → for the next word, or Record to try again.","ok");
+    }catch(e){ T.busy=false; status("Something went wrong saving that recording. Try again.","bad"); }
+  }
+
+  /* Trim silence, even out the volume, and save as a small WAV file that plays everywhere. */
+  async function cleanUp(blob){
+    const AC=window.AudioContext||window.webkitAudioContext; const ac=new AC();
+    const ab=await blob.arrayBuffer();
+    const buf=await new Promise((res,rej)=>ac.decodeAudioData(ab,res,rej));
+    ac.close && ac.close();
+    const sr=buf.sampleRate, n=buf.length, ch=buf.numberOfChannels;
+    const mono=new Float32Array(n);
+    for(let c=0;c<ch;c++){ const d=buf.getChannelData(c); for(let i=0;i<n;i++) mono[i]+=d[i]/ch; }
+    // loudness in 10 ms windows
+    const win=Math.max(1,Math.round(sr*0.01)), frames=Math.floor(n/win), rms=new Float32Array(frames);
+    let maxR=0;
+    for(let f=0;f<frames;f++){ let s=0; for(let i=f*win;i<(f+1)*win;i++) s+=mono[i]*mono[i]; rms[f]=Math.sqrt(s/win); if(rms[f]>maxR) maxR=rms[f]; }
+    if(maxR<0.01) return null;                       // basically silence
+    const th=Math.max(0.008,maxR*0.1);
+    let a=0,b=frames-1; while(a<frames && rms[a]<th) a++; while(b>a && rms[b]<th) b--;
+    const start=Math.max(0,(a*win)-Math.round(sr*0.12)), end=Math.min(n,((b+1)*win)+Math.round(sr*0.2));
+    const cut=mono.slice(start,end);
+    // resample to 22.05 kHz to keep files small
+    const outRate=22050, outLen=Math.max(1,Math.round(cut.length*outRate/sr));
+    const off=new (window.OfflineAudioContext||window.webkitOfflineAudioContext)(1,outLen,outRate);
+    const src=off.createBufferSource(), tmp=off.createBuffer(1,cut.length,sr);
+    tmp.getChannelData(0).set(cut); src.buffer=tmp; src.connect(off.destination); src.start();
+    const out=(await off.startRendering()).getChannelData(0);
+    // even out the volume and fade the edges
+    let peak=0; for(let i=0;i<out.length;i++) peak=Math.max(peak,Math.abs(out[i]));
+    const gain=peak>0?0.89/peak:1, fade=Math.round(outRate*0.01);
+    for(let i=0;i<out.length;i++){
+      let g=gain; if(i<fade) g*=i/fade; if(i>out.length-fade) g*=(out.length-i)/fade;
+      out[i]=Math.max(-1,Math.min(1,out[i]*g));
+    }
+    return wavBlob(out,outRate);
+  }
+  function wavBlob(samples,rate){
+    const v=new DataView(new ArrayBuffer(44+samples.length*2));
+    const s=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i));};
+    s(0,"RIFF");v.setUint32(4,36+samples.length*2,true);s(8,"WAVE");s(12,"fmt ");v.setUint32(16,16,true);
+    v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,rate,true);v.setUint32(28,rate*2,true);
+    v.setUint16(32,2,true);v.setUint16(34,16,true);s(36,"data");v.setUint32(40,samples.length*2,true);
+    for(let i=0;i<samples.length;i++) v.setInt16(44+i*2,samples[i]<0?samples[i]*0x8000:samples[i]*0x7FFF,true);
+    return new Blob([v.buffer],{type:"audio/wav"});
+  }
+
+  /* ---- buttons & keys ---- */
+  $("tRec").onclick=toggleRec;
+  $("tPlay").onclick=()=>playWord(list[T.i].word).catch(()=>{});
+  $("tDel").onclick=async()=>{ const w=list[T.i].word; await DB.del(w); T.have.delete(w); select(T.i,false); status("Deleted.",""); };
+  $("tPrev").onclick=()=>select(T.i-1);
+  $("tNext").onclick=()=>select(T.i+1);
+  $("tMissing").onchange=renderList; $("tSearch").oninput=renderList;
+  $("tDownload").onclick=downloadZip;
+  document.addEventListener("keydown",e=>{
+    if(e.target.tagName==="INPUT") return;
+    if(e.code==="Space"){ e.preventDefault(); toggleRec(); }
+    else if(e.key==="ArrowRight"){ e.preventDefault(); select(T.i+1); }
+    else if(e.key==="ArrowLeft"){ e.preventDefault(); select(T.i-1); }
+    else if(e.key==="p"||e.key==="P"){ playWord(list[T.i].word).catch(()=>{}); }
+  });
+
+  /* ---- download as zip (audio/<word>.wav) ---- */
+  async function downloadZip(){
+    const files=[];
+    const words=[...T.have].sort();
+    // GitHub's website takes at most 100 files per upload, so big sets are split into batches.
+    const BATCH=90, batches=Math.ceil(words.length/BATCH);
+    for(let i=0;i<words.length;i++){
+      const w=words[i], b=await DB.get(w); if(!b) continue;
+      const folder=batches>1 ? `upload ${Math.floor(i/BATCH)+1} of ${batches}/audio/` : "audio/";
+      files.push({name:folder+w+".wav", data:new Uint8Array(await b.arrayBuffer())});
+    }
+    if(!files.length) return;
+    const zip=makeZip(files);
+    const url=URL.createObjectURL(new Blob([zip],{type:"application/zip"}));
+    const a=document.createElement("a"); a.href=url; a.download="spelling-recordings.zip";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+    status(batches>1
+      ? `Downloaded ${files.length} recordings in ${batches} batches. Upload the audio folder from each "upload" folder, one at a time (see below).`
+      : `Downloaded ${files.length} recording${files.length>1?"s":""}. See "How to put the recordings on your website" below.`,"ok");
+  }
+
+  /* ---- start ---- */
+  DB.keys().then(keys=>{ keys.forEach(k=>T.have.add(k)); select(0); checkSite(); });
+  async function checkSite(){
+    const words=list.map(w=>w.word); let k=0;
+    async function worker(){ while(k<words.length){ const w=words[k++];
+      try{ const r=await fetch(AUDIO_DIR+w+".wav",{method:"HEAD",cache:"no-store"}); siteHas[w]=r.ok; }catch(e){ siteHas[w]=false; } } }
+    await Promise.all([worker(),worker(),worker(),worker(),worker(),worker()]);
+    select(T.i,false);
+  }
+}
+
+/* ---- tiny ZIP writer (no compression; WAV doesn't compress much anyway) ---- */
+const CRC_TABLE=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
+function crc32(d){let c=0xFFFFFFFF;for(let i=0;i<d.length;i++)c=CRC_TABLE[(c^d[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0;}
+function makeZip(files){
+  const enc=new TextEncoder(), parts=[], central=[]; let offset=0;
+  const now=new Date(), dtime=(now.getHours()<<11)|(now.getMinutes()<<5)|(now.getSeconds()>>1),
+        ddate=((now.getFullYear()-1980)<<9)|((now.getMonth()+1)<<5)|now.getDate();
+  for(const f of files){
+    const name=enc.encode(f.name), crc=crc32(f.data), size=f.data.length;
+    const h=new DataView(new ArrayBuffer(30));
+    h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint16(6,0,true);h.setUint16(8,0,true);
+    h.setUint16(10,dtime,true);h.setUint16(12,ddate,true);h.setUint32(14,crc,true);h.setUint32(18,size,true);h.setUint32(22,size,true);
+    h.setUint16(26,name.length,true);h.setUint16(28,0,true);
+    parts.push(new Uint8Array(h.buffer),name,f.data);
+    const c=new DataView(new ArrayBuffer(46));
+    c.setUint32(0,0x02014b50,true);c.setUint16(4,20,true);c.setUint16(6,20,true);c.setUint16(8,0,true);c.setUint16(10,0,true);
+    c.setUint16(12,dtime,true);c.setUint16(14,ddate,true);c.setUint32(16,crc,true);c.setUint32(20,size,true);c.setUint32(24,size,true);
+    c.setUint16(28,name.length,true);c.setUint16(30,0,true);c.setUint16(32,0,true);c.setUint16(34,0,true);c.setUint16(36,0,true);
+    c.setUint32(38,0,true);c.setUint32(42,offset,true);
+    central.push(new Uint8Array(c.buffer),name);
+    offset+=30+name.length+size;
+  }
+  const csize=central.reduce((s,a)=>s+a.length,0);
+  const e=new DataView(new ArrayBuffer(22));
+  e.setUint32(0,0x06054b50,true);e.setUint16(8,files.length,true);e.setUint16(10,files.length,true);
+  e.setUint32(12,csize,true);e.setUint32(16,offset,true);
+  return new Blob([...parts,...central,new Uint8Array(e.buffer)]);
+}
+
+const TEACHER = location.hash==="#teacher";
+if(TEACHER) startTeacher();
+else { order=shuffle([...WORDS]); load(); }
+window.addEventListener("hashchange",()=>location.reload());
+</script>
+</body>
+</html>
